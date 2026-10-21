@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="aurora">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator Persegi Panjang</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#070b1f; --bg2:#12063a; --bg3:#021c2b;
+  --card:rgba(255,255,255,.06); --card-b:rgba(255,255,255,.14);
+  --text:#eef2ff; --muted:#9aa4c7;
+  --a:#22d3ee; --b:#818cf8; --c:#f472b6;
+  --input:rgba(5,8,25,.6);
+}
+[data-theme="sunset"]{--bg1:#2a0a12;--bg2:#3a1205;--bg3:#1d0536;--a:#fbbf24;--b:#fb7185;--c:#f97316;--muted:#d6a8a0;}
+[data-theme="matcha"]{--bg1:#04160f;--bg2:#06241a;--bg3:#0b1d2a;--a:#34d399;--b:#a3e635;--c:#2dd4bf;--muted:#8fb9a7;}
+[data-theme="candy"]{--bg1:#fdf2f8;--bg2:#ede9fe;--bg3:#e0f2fe;--card:rgba(255,255,255,.7);--card-b:rgba(167,139,250,.35);--text:#312e51;--muted:#6b6896;--a:#ec4899;--b:#8b5cf6;--c:#06b6d4;--input:rgba(255,255,255,.85);}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',sans-serif;color:var(--text);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(120deg,var(--bg1),var(--bg2),var(--bg3),var(--bg1));
+  background-size:300% 300%;animation:bgShift 18s ease infinite;transition:color .5s;
+}
+@keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+h1,h2,h3,.disp{font-family:'Outfit',sans-serif}
+#bgCanvas,#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#bgCanvas{z-index:0}#confetti{z-index:60}
+.blob{position:fixed;border-radius:50%;filter:blur(90px);opacity:.35;z-index:0;pointer-events:none;animation:blob 14s ease-in-out infinite}
+.blob.b1{width:420px;height:420px;background:var(--a);top:-120px;left:-100px}
+.blob.b2{width:480px;height:480px;background:var(--c);bottom:-160px;right:-120px;animation-delay:-5s}
+.blob.b3{width:320px;height:320px;background:var(--b);top:40%;left:45%;animation-delay:-9s}
+@keyframes blob{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,-40px) scale(1.15)}66%{transform:translate(-50px,50px) scale(.9)}}
+.wrap{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:24px 18px 40px}
+
+/* header */
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:26px;animation:dropIn .9s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes dropIn{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:none}}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,var(--a),var(--b),var(--c));background-size:200% 200%;animation:bgShift 5s linear infinite,logoFloat 4s ease-in-out infinite;display:grid;place-items:center;box-shadow:0 10px 40px -6px var(--a);position:relative}
+.logo::after{content:"";position:absolute;inset:-6px;border-radius:22px;border:2px solid var(--a);opacity:.5;animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{transform:scale(.9);opacity:.7}100%{transform:scale(1.35);opacity:0}}
+@keyframes logoFloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
+.logo svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2.4}
+.brand h1{font-size:2rem;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,var(--a),var(--b),var(--c),var(--a));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:textFlow 6s linear infinite}
+@keyframes textFlow{to{background-position:300% 0}}
+.brand p{font-size:.78rem;color:var(--muted)}
+.themes{display:flex;gap:6px;padding:6px;border-radius:18px;background:var(--card);border:1px solid var(--card-b);backdrop-filter:blur(14px)}
+.themes button{border:0;cursor:pointer;padding:8px 14px;border-radius:13px;font:600 .75rem 'Inter';color:var(--muted);background:transparent;transition:.3s;position:relative;overflow:hidden}
+.themes button:hover{color:var(--text);transform:translateY(-2px)}
+.themes button.on{color:#fff;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 6px 20px -6px var(--a)}
+
+/* layout */
+main{display:grid;grid-template-columns:5fr 7fr;gap:22px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:22px}
+.card{
+  background:var(--card);border:1px solid var(--card-b);border-radius:26px;padding:24px;backdrop-filter:blur(18px);
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.5);position:relative;overflow:hidden;
+  opacity:0;transform:translateY(40px) scale(.97);animation:cardIn .9s cubic-bezier(.2,.9,.3,1.1) forwards;
+  transform-style:preserve-3d;transition:box-shadow .3s;
+}
+.card:nth-child(1){animation-delay:.15s}.card:nth-child(2){animation-delay:.3s}.card:nth-child(3){animation-delay:.45s}
+@keyframes cardIn{to{opacity:1;transform:none}}
+.card::before{content:"";position:absolute;inset:0;background:radial-gradient(500px circle at var(--mx,50%) var(--my,0%),rgba(255,255,255,.12),transparent 45%);opacity:0;transition:.3s;pointer-events:none}
+.card:hover::before{opacity:1}
+.card::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.1),transparent);transform:skewX(-20deg);animation:shine 7s ease-in-out infinite;pointer-events:none}
+@keyframes shine{0%,70%{left:-60%}100%{left:140%}}
+.card h2{font-size:1.1rem;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.card h2 i{font-style:normal;width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,var(--a),var(--b));font-size:1rem}
+.row{display:flex;align-items:center;justify-content:space-between}
+
+/* inputs */
+.field{margin-bottom:20px}
+.field label{font-size:.85rem;font-weight:600;display:flex;justify-content:space-between;margin-bottom:8px}
+.field label b{font-family:'Outfit';color:var(--fc);font-size:1rem;display:inline-block}
+.field.p{--fc:var(--a)}.field.l{--fc:var(--c)}
+.bump{animation:bump .35s ease}
+@keyframes bump{50%{text-shadow:0 0 14px var(--fc);filter:brightness(1.4)}}
+.field label b,.r .v b,.h b,.badge{font-variant-numeric:tabular-nums}
+.field label b{min-width:90px;text-align:right}
+.r .v b{min-width:5.2ch}
+#tagline{min-height:1.2em}
+.inp{position:relative}
+.inp input[type=number]{width:100%;padding:14px 56px 14px 16px;border-radius:16px;border:1.5px solid var(--card-b);background:var(--input);color:var(--text);font:600 1.05rem 'Outfit';outline:none;transition:.3s}
+.inp input[type=number]:focus{border-color:var(--fc);box-shadow:0 0 0 4px color-mix(in srgb,var(--fc) 25%,transparent),0 0 24px -4px var(--fc)}
+.inp span{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:.72rem;font-weight:700;color:var(--muted);padding:4px 8px;border-radius:8px;background:var(--card)}
+input[type=range]{width:100%;margin-top:12px;-webkit-appearance:none;appearance:none;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--fc) var(--pct,10%),var(--card-b) var(--pct,10%));outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--fc);box-shadow:0 0 16px var(--fc);transition:transform .2s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid var(--fc)}
+.units,.presets{display:grid;gap:8px}
+.units{grid-template-columns:repeat(4,1fr)}.presets{grid-template-columns:repeat(3,1fr)}
+.sub{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin:4px 0 8px;display:block}
+.chip{border:1px solid var(--card-b);background:var(--card);color:var(--text);padding:10px 6px;border-radius:14px;font:600 .78rem 'Inter';cursor:pointer;transition:.25s;position:relative;overflow:hidden}
+.chip:hover{transform:translateY(-3px);border-color:var(--a);box-shadow:0 8px 20px -8px var(--a)}
+.chip.on{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;border-color:transparent;box-shadow:0 8px 24px -8px var(--a)}
+.btn{border:0;cursor:pointer;color:#fff;font:700 .8rem 'Inter';padding:11px 18px;border-radius:14px;background:linear-gradient(135deg,var(--a),var(--b),var(--c));background-size:200% 200%;animation:bgShift 6s ease infinite;box-shadow:0 10px 26px -10px var(--a);transition:transform .25s;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-3px) scale(1.04)}.btn:active{transform:scale(.96)}
+.ghost{background:var(--card);color:var(--muted);box-shadow:none;border:1px solid var(--card-b);animation:none;padding:7px 12px;font-size:.72rem}
+.ghost:hover{color:var(--text)}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rip .6s linear;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+
+/* formulas */
+.formulas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f{padding:14px;border-radius:16px;background:var(--input);border:1px solid var(--card-b);transition:.3s}
+.f:hover{transform:translateY(-4px) rotate(-1deg);border-color:var(--a)}
+.f small{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}
+.f b{font-family:'Outfit';font-size:1.05rem;color:var(--a)}
+.f.wide{grid-column:span 2}.f:nth-child(2) b{color:var(--b)}.f:nth-child(3) b{color:var(--c)}
+
+/* visualizer */
+.vis{position:relative;border-radius:20px;background:var(--input);border:1px solid var(--card-b);overflow:hidden}
+.vis svg{width:100%;height:auto;display:block}
+.badge{font-size:.72rem;font-weight:700;padding:6px 12px;border-radius:99px;background:color-mix(in srgb,var(--a) 15%,transparent);border:1px solid color-mix(in srgb,var(--a) 40%,transparent);color:var(--a);animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 18px -2px var(--a)}}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hint{font-size:.72rem;color:var(--muted);text-align:center;margin-top:10px;font-style:italic}
+
+/* results */
+.res{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:620px){.res{grid-template-columns:1fr}}
+.r{padding:18px;border-radius:20px;background:var(--input);border:1px solid var(--card-b);position:relative;overflow:hidden;transition:.35s}
+.r:hover{transform:translateY(-6px);border-color:var(--rc);box-shadow:0 18px 40px -16px var(--rc)}
+.r:nth-child(1){--rc:var(--a)}.r:nth-child(2){--rc:var(--b)}.r:nth-child(3){--rc:var(--c)}
+.r::before{content:"";position:absolute;right:-30px;top:-30px;width:100px;height:100px;border-radius:50%;background:var(--rc);opacity:.18;transition:.5s}
+.r:hover::before{transform:scale(2.2);opacity:.28}
+.r small{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.r .v{display:flex;align-items:baseline;gap:6px;margin-top:8px}
+.r .v b{font-family:'Outfit';font-size:1.9rem;font-weight:800;color:var(--rc);text-shadow:0 0 20px color-mix(in srgb,var(--rc) 50%,transparent)}
+.r .v em{font-style:normal;color:var(--muted);font-size:.78rem;font-weight:600}
+.r .bar{height:4px;border-radius:9px;background:var(--card-b);margin-top:12px;overflow:hidden}
+.r .bar i{display:block;height:100%;width:50%;background:var(--rc);border-radius:9px;transition:width .8s cubic-bezier(.2,.9,.3,1)}
+
+/* history */
+.hist{margin-top:22px}
+#hl{display:flex;flex-direction:column;gap:10px;max-height:300px;overflow-y:auto;padding-right:6px}
+.empty{text-align:center;color:var(--muted);padding:30px;font-size:.85rem}
+.empty div{font-size:2.4rem;animation:logoFloat 3s ease-in-out infinite}
+.h{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:18px;background:var(--input);border:1px solid var(--card-b);animation:slideIn .5s cubic-bezier(.2,.9,.3,1.2) both;transition:.3s}
+.h:hover{border-color:var(--a);transform:translateX(6px)}
+.h.out{animation:slideOut .35s ease forwards}
+@keyframes slideIn{from{opacity:0;transform:translateX(-50px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes slideOut{to{opacity:0;transform:translateX(70px) scale(.8);height:0;padding:0;margin:-5px 0}}
+.h b{font-family:'Outfit';font-size:.95rem}
+.h p{font-size:.75rem;color:var(--muted);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+.h p span:nth-child(1) u{color:var(--a)}.h p span:nth-child(2) u{color:var(--b)}.h p span:nth-child(3) u{color:var(--c)}
+.h p u{text-decoration:none;font-weight:700}
+.ib{border:0;cursor:pointer;width:34px;height:34px;border-radius:11px;background:var(--card);color:var(--text);transition:.25s;font-size:.9rem}
+.ib:hover{transform:rotate(18deg) scale(1.15);background:var(--a);color:#fff}
+.ib.del:hover{background:#f43f5e}
+.t{font-size:.65rem;color:var(--muted);padding:4px 8px;border-radius:8px;background:var(--card)}
+footer{text-align:center;color:var(--muted);font-size:.72rem;margin-top:34px}
+
+/* toast */
+#toasts{position:fixed;top:18px;right:18px;z-index:80;display:flex;flex-direction:column;gap:10px}
+.toast{padding:12px 18px;border-radius:16px;background:var(--card);border:1px solid var(--a);backdrop-filter:blur(20px);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 14px 34px -10px rgba(0,0,0,.5);animation:toastIn .5s cubic-bezier(.2,.9,.3,1.3) both;position:relative;overflow:hidden}
+.toast::after{content:"";position:absolute;left:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--a),var(--c));animation:tbar 3s linear forwards}
+.toast.out{animation:toastOut .4s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(120px) scale(.8)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateX(120px)}}
+@keyframes tbar{from{width:100%}to{width:0}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<canvas id="confetti"></canvas>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<div id="toasts"></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 6l18 12" stroke-dasharray="3 3"/></svg></div>
+      <div>
+        <h1>Kalkulator Persegi Panjang</h1>
+        <h3>BY: Razzan X RPL B</h3>
+        <p id="tagline">Kalkulator &amp; visualisasi persegi panjang interaktif</p>
+      </div>
+    </div>
+    <div class="themes" id="themes">
+      <button data-t="aurora" class="on">🌌 Aurora</button>
+      <button data-t="sunset">🌅 Sunset</button>
+      <button data-t="matcha">🍃 Matcha</button>
+      <button data-t="candy">🍬 Candy</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="col">
+      <section class="card tilt">
+        <div class="row"><h2><i>🎛️</i> Masukkan Ukuran</h2><button class="btn ghost" id="resetBtn">↻ Reset</button></div>
+
+        <div class="field p">
+          <label for="pIn">Panjang (p) <b id="pLbl">10 cm</b></label>
+          <div class="inp"><input type="number" id="pIn" min="0.1" step="any" value="10"><span class="u">cm</span></div>
+          <input type="range" id="pRg" min="1" max="100" value="10">
+        </div>
+        <div class="field l">
+          <label for="lIn">Lebar (l) <b id="lLbl">6 cm</b></label>
+          <div class="inp"><input type="number" id="lIn" min="0.1" step="any" value="6"><span class="u">cm</span></div>
+          <input type="range" id="lRg" min="1" max="100" value="6">
+        </div>
+
+        <span class="sub">Satuan</span>
+        <div class="units" id="units">
+          <button class="chip on" data-u="cm">cm</button><button class="chip" data-u="m">m</button>
+          <button class="chip" data-u="mm">mm</button><button class="chip" data-u="inch">inch</button>
+        </div>
+        <span class="sub" style="margin-top:18px">Preset Cepat</span>
+        <div class="presets">
+          <button class="chip" data-p="5,5">⬛ Persegi 5×5</button>
+          <button class="chip" data-p="12,8">▭ Standar 12×8</button>
+          <button class="chip" data-p="20,10">⬜ Besar 20×10</button>
+          <button class="chip" data-p="16,9">📺 Layar 16×9</button>
+          <button class="chip" data-p="30,5">📏 Panjang 30×5</button>
+          <button class="chip" id="randBtn">🎲 Acak</button>
+        </div>
+      </section>
+
+      <section class="card tilt">
+        <h2><i>📘</i> Rumus Persegi Panjang</h2>
+        <div class="formulas">
+          <div class="f"><small>Luas (L)</small><b>p × l</b></div>
+          <div class="f"><small>Keliling (K)</small><b>2 × (p + l)</b></div>
+          <div class="f wide"><small>Diagonal (d)</small><b>√(p² + l²)</b></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card tilt">
+        <div class="row" style="margin-bottom:14px">
+          <h2 style="margin:0"><i>👁️</i> Visualisasi Real-Time</h2>
+          <span class="badge" id="ratio">Rasio 5:3</span>
+        </div>
+        <div class="vis">
+          <svg id="svg" viewBox="0 0 500 320">
+            <defs>
+              <linearGradient id="gFill" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" id="s1" stop-color="#22d3ee" stop-opacity=".85"/>
+                <stop offset="100%" id="s2" stop-color="#818cf8" stop-opacity=".85"/>
+              </linearGradient>
+              <pattern id="bgGrid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="currentColor" stroke-opacity=".08"/></pattern>
+              <pattern id="cells" width="20" height="20" patternUnits="userSpaceOnUse"><path id="cellPath" d="M20 0H0V20" fill="none" stroke="#fff" stroke-opacity=".28"/></pattern>
+              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter>
+              <clipPath id="clip"><rect id="clipRect"/></clipPath>
+            </defs>
+            <rect width="500" height="320" fill="url(#bgGrid)" style="color:var(--text)"/>
+            <g transform="translate(250,165)">
+              <rect id="glowR" fill="var(--a)" opacity=".55" filter="url(#glow)"/>
+              <rect id="rect" fill="url(#gFill)" stroke="var(--a)" stroke-width="3" rx="8"/>
+              <g clip-path="url(#clip)">
+                <rect id="cellsR" fill="url(#cells)" id="cellsR"/>
+                <rect id="sweep" fill="#fff" opacity=".12" width="40"/>
+              </g>
+              <rect id="dash" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="14 12" rx="8" opacity=".7"/>
+              <line id="diag" stroke="var(--c)" stroke-width="2.5" stroke-dasharray="7 6"/>
+              <circle id="dot" r="6" fill="var(--c)"/>
+              <circle id="dotHalo" r="6" fill="none" stroke="var(--c)"/>
+              <!-- dimension lines -->
+              <g id="dimP" stroke="var(--a)" stroke-width="2"><line id="dpL"/><line id="dpA"/><line id="dpB"/></g>
+              <g id="dimL" stroke="var(--c)" stroke-width="2"><line id="dlL"/><line id="dlA"/><line id="dlB"/></g>
+              <text id="tP" text-anchor="middle" font-family="Outfit" font-weight="700" font-size="15" fill="var(--a)"></text>
+              <text id="tL" text-anchor="start" font-family="Outfit" font-weight="700" font-size="15" fill="var(--c)"></text>
+              <text id="tD" text-anchor="middle" font-family="Outfit" font-weight="700" font-size="14" fill="#fff" stroke="rgba(0,0,0,.35)" stroke-width="3" paint-order="stroke"></text>
+              <!-- right angle mark -->
+              <path id="angle" fill="none" stroke="#fff" stroke-width="2" opacity=".85"/>
+            </g>
+          </svg>
+        </div>
+        <div class="toggles">
+          <button class="chip on" data-tg="diag">╱ Diagonal</button>
+          <button class="chip on" data-tg="cells">▦ Kotak satuan</button>
+          <button class="chip on" data-tg="dim">↔ Dimensi</button>
+          <button class="chip on" data-tg="fx">✨ Efek gerak</button>
+        </div>
+        <p class="hint">Persegi panjang diskalakan proporsional dan bergerak halus mengikuti angka yang kamu ubah.</p>
+      </section>
+
+      <section class="card tilt">
+        <div class="row" style="margin-bottom:16px">
+          <h2 style="margin:0"><i>🧮</i> Hasil Perhitungan</h2>
+          <button class="btn" id="saveBtn">🔖 Simpan ke Riwayat</button>
+        </div>
+        <div class="res">
+          <div class="r"><small>Luas</small><div class="v"><b id="rL">0</b><em id="uL">cm²</em></div><div class="bar"><i id="bL"></i></div></div>
+          <div class="r"><small>Keliling</small><div class="v"><b id="rK">0</b><em id="uK">cm</em></div><div class="bar"><i id="bK"></i></div></div>
+          <div class="r"><small>Diagonal</small><div class="v"><b id="rD">0</b><em id="uD">cm</em></div><div class="bar"><i id="bD"></i></div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <section class="card hist">
+    <div class="row" style="margin-bottom:16px">
+      <h2 style="margin:0"><i>🕘</i> Riwayat (<span id="hc">0</span>)</h2>
+      <button class="btn ghost" id="clearBtn">🗑 Hapus Semua</button>
+    </div>
+    <div id="hl"></div>
+  </section>
+  <footer>RectoCalc Neon © 2026 • Dibuat dengan HTML, CSS &amp; JavaScript murni</footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const st={unit:'cm',p:10,l:6,hist:[],fx:true,showDiag:true,showCells:true,showDim:true};
+const disp={w:200,h:120,p:10,l:6,L:0,K:0,D:0};      // nilai yang ditampilkan (animasi)
+const tgt={w:200,h:120,L:60,K:32,D:11.66};
+
+/* ---------- util ---------- */
+const fmt=n=>Number.isInteger(n)?String(n):(+n.toFixed(2)).toString();
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;$('toasts').appendChild(t);
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),400)},3000);
+}
+function bump(el){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump')}
+document.addEventListener('click',e=>{ // ripple pada semua tombol
+  const b=e.target.closest('.btn,.chip,.themes button');if(!b)return;
+  const r=b.getBoundingClientRect(),s=Math.max(r.width,r.height)/2,x=document.createElement('span');
+  x.className='ripple';x.style.cssText='width:'+s+'px;height:'+s+'px;left:'+(e.clientX-r.left-s/2)+'px;top:'+(e.clientY-r.top-s/2)+'px';
+  b.appendChild(x);setTimeout(()=>x.remove(),600);
+});
+
+/* ---------- kartu 3D tilt + spotlight ---------- */
+document.querySelectorAll('.tilt').forEach(c=>{
+  c.addEventListener('mousemove',e=>{
+    const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+    c.style.setProperty('--mx',x*100+'%');c.style.setProperty('--my',y*100+'%');
+    if(matchMedia('(hover:hover)').matches&&st.fx)c.style.transform='perspective(900px) rotateY('+((x-.5)*5)+'deg) rotateX('+((.5-y)*5)+'deg) translateZ(0)';
+  });
+  c.addEventListener('mouseleave',()=>{c.style.transform=''});
+});
+
+/* ---------- background partikel ---------- */
+const bg=$('bgCanvas'),bx=bg.getContext('2d');let W,H,parts=[],mouse={x:-999,y:-999};
+function rs(){W=bg.width=innerWidth;H=bg.height=innerHeight;
+  const n=Math.min(90,Math.floor(W*H/18000));parts=[];
+  for(let i=0;i<n;i++)parts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,r:Math.random()*2+1});}
+addEventListener('resize',rs);rs();
+addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function drawBg(){
+  bx.clearRect(0,0,W,H);const col=css('--a')||'#22d3ee';
+  bx.fillStyle=col;bx.strokeStyle=col;
+  for(let i=0;i<parts.length;i++){
+    const p=parts[i];p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+    const dx=p.x-mouse.x,dy=p.y-mouse.y,d=Math.hypot(dx,dy);
+    if(d<120){p.x+=dx/d*1.6;p.y+=dy/d*1.6}
+    bx.globalAlpha=.7;bx.beginPath();bx.arc(p.x,p.y,p.r,0,6.283);bx.fill();
+    for(let j=i+1;j<parts.length;j++){
+      const q=parts[j],dd=Math.hypot(p.x-q.x,p.y-q.y);
+      if(dd<120){bx.globalAlpha=(1-dd/120)*.25;bx.beginPath();bx.moveTo(p.x,p.y);bx.lineTo(q.x,q.y);bx.stroke()}
+    }
+  }
+  bx.globalAlpha=1;
+}
+
+/* ---------- konfeti ---------- */
+const cf=$('confetti'),cx=cf.getContext('2d');let bits=[];
+function sizeCf(){cf.width=innerWidth;cf.height=innerHeight}addEventListener('resize',sizeCf);sizeCf();
+function burst(x,y){
+  const cols=[css('--a'),css('--b'),css('--c'),'#fde047','#fff'];
+  for(let i=0;i<90;i++){const a=Math.random()*6.283,s=Math.random()*10+4;
+    bits.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-6,g:.28,w:Math.random()*8+4,h:Math.random()*5+3,rot:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%5],life:1})}
+}
+function drawCf(){
+  cx.clearRect(0,0,cf.width,cf.height);
+  bits=bits.filter(b=>b.life>0);
+  bits.forEach(b=>{b.x+=b.vx;b.y+=b.vy;b.vy+=b.g;b.vx*=.985;b.rot+=b.vr;b.life-=.012;
+    cx.save();cx.globalAlpha=Math.max(b.life,0);cx.translate(b.x,b.y);cx.rotate(b.rot);cx.fillStyle=b.c;cx.fillRect(-b.w/2,-b.h/2,b.w,b.h);cx.restore()});
+}
+
+/* ---------- logika kalkulator ---------- */
+const sym={cm:'cm',m:'m',mm:'mm',inch:'inch'};
+function read(){
+  let p=parseFloat($('pIn').value),l=parseFloat($('lIn').value);
+  if(!(p>0))p=.1;if(!(l>0))l=.1;st.p=p;st.l=l;
+  $('pLbl').textContent=fmt(p)+' '+st.unit;$('lLbl').textContent=fmt(l)+' '+st.unit;
+  bump($('pLbl'));bump($('lLbl'));
+  const pct=(v)=>Math.min(100,Math.max(0,(v-1)/99*100));
+  $('pRg').style.setProperty('--pct',pct(p)+'%');$('lRg').style.setProperty('--pct',pct(l)+'%');
+  const L=p*l,K=2*(p+l),D=Math.hypot(p,l);
+  tgt.L=L;tgt.K=K;tgt.D=D;
+  const mw=300,mh=170,sc=Math.min(mw/p,mh/l);tgt.w=p*sc;tgt.h=l*sc;tgt.sc=sc;
+  const g=gcd(Math.round(p*10),Math.round(l*10))||1;
+  $('ratio').textContent='Rasio '+Math.round(p*10/g)+':'+Math.round(l*10/g);
+  const mx=Math.max(L,1);
+  $('bL').style.width=Math.min(100,L/10)+'%';
+  $('bK').style.width=Math.min(100,K*1.2)+'%';
+  $('bD').style.width=Math.min(100,D*2)+'%';
+}
+function setUnit(u){
+  st.unit=u;document.querySelectorAll('#units .chip').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
+  document.querySelectorAll('.u').forEach(e=>e.textContent=u);
+  $('uL').textContent=u+'²';$('uK').textContent=u;$('uD').textContent=u;read();
+}
+function setVals(p,l){
+  $('pIn').value=p;$('lIn').value=l;
+  if(p>=1&&p<=100)$('pRg').value=p;if(l>=1&&l<=100)$('lRg').value=l;read();
+}
+$('pIn').addEventListener('input',()=>{const v=parseFloat($('pIn').value);if(v>=1&&v<=100)$('pRg').value=v;read()});
+$('lIn').addEventListener('input',()=>{const v=parseFloat($('lIn').value);if(v>=1&&v<=100)$('lRg').value=v;read()});
+$('pRg').addEventListener('input',()=>{$('pIn').value=$('pRg').value;read()});
+$('lRg').addEventListener('input',()=>{$('lIn').value=$('lRg').value;read()});
+$('units').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)setUnit(b.dataset.u)});
+document.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{const[p,l]=b.dataset.p.split(',').map(Number);setVals(p,l);toast('Preset '+p+' × '+l+' diterapkan ✨')}));
+$('randBtn').addEventListener('click',()=>{const p=Math.ceil(Math.random()*40+2),l=Math.ceil(Math.random()*25+1);setVals(p,l);toast('Ukuran acak: '+p+' × '+l+' 🎲')});
+$('resetBtn').addEventListener('click',()=>{setVals(10,6);toast('Kalkulator diatur ulang ↻')});
+document.querySelectorAll('[data-tg]').forEach(b=>b.addEventListener('click',()=>{
+  b.classList.toggle('on');const on=b.classList.contains('on'),k=b.dataset.tg;
+  if(k==='diag')st.showDiag=on;if(k==='cells')st.showCells=on;if(k==='dim')st.showDim=on;if(k==='fx')st.fx=on;
+}));
+
+/* tema */
+$('themes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.documentElement.dataset.theme=b.dataset.t;
+  document.querySelectorAll('#themes button').forEach(x=>x.classList.toggle('on',x===b));
+  setTimeout(()=>{$('s1').setAttribute('stop-color',css('--a'));$('s2').setAttribute('stop-color',css('--b'))},30);
+  toast('Tema '+b.textContent.trim()+' aktif');
+});
+
+/* ---------- riwayat ---------- */
+function persist(){try{localStorage.setItem('recto_neon_hist',JSON.stringify(st.hist))}catch(e){}}
+function loadH(){try{const s=localStorage.getItem('recto_neon_hist');if(s)st.hist=JSON.parse(s)}catch(e){}}
+function renderH(){
+  $('hc').textContent=st.hist.length;const c=$('hl');
+  if(!st.hist.length){c.innerHTML='<div class="empty"><div>📭</div>Belum ada riwayat. Klik “Simpan ke Riwayat” untuk mencatat perhitunganmu!</div>';return}
+  c.innerHTML=st.hist.map(h=>'<div class="h" data-id="'+h.id+'"><div><b>p = '+h.p+' '+h.u+' &nbsp;•&nbsp; l = '+h.l+' '+h.u+'</b><p><span><u>L</u> '+h.L+' '+h.u+'²</span><span><u>K</u> '+h.K+' '+h.u+'</span><span><u>d</u> '+h.D+' '+h.u+'</span></p></div><div style="display:flex;gap:8px;align-items:center"><span class="t">'+h.t+'</span><button class="ib" data-act="load" title="Muat kembali">↺</button><button class="ib del" data-act="del" title="Hapus">✕</button></div></div>').join('');
+}
+$('saveBtn').addEventListener('click',e=>{
+  const p=st.p,l=st.l;
+  st.hist.unshift({id:Date.now(),t:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),p:fmt(p),l:fmt(l),L:fmt(p*l),K:fmt(2*(p+l)),D:fmt(Math.hypot(p,l)),u:st.unit});
+  if(st.hist.length>20)st.hist.pop();persist();renderH();
+  const r=e.currentTarget.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2);toast('Tersimpan ke riwayat 🎉');
+});
+$('hl').addEventListener('click',e=>{
+  const b=e.target.closest('.ib');if(!b)return;const row=b.closest('.h'),id=+row.dataset.id;
+  if(b.dataset.act==='del'){row.classList.add('out');setTimeout(()=>{st.hist=st.hist.filter(h=>h.id!==id);persist();renderH()},330)}
+  else{const h=st.hist.find(x=>x.id===id);if(h){setUnit(h.u);setVals(+h.p,+h.l);toast('Data riwayat dimuat ↺');window.scrollTo({top:0,behavior:'smooth'})}}
+});
+$('clearBtn').addEventListener('click',()=>{if(!st.hist.length)return;st.hist=[];persist();renderH();toast('Semua riwayat dibersihkan')});
+
+/* ---------- animasi SVG & angka ---------- */
+const E={rect:$('rect'),glow:$('glowR'),clip:$('clipRect'),cells:$('cellsR'),sweep:$('sweep'),dash:$('dash'),diag:$('diag'),dot:$('dot'),halo:$('dotHalo'),
+  dpL:$('dpL'),dpA:$('dpA'),dpB:$('dpB'),dlL:$('dlL'),dlA:$('dlA'),dlB:$('dlB'),tP:$('tP'),tL:$('tL'),tD:$('tD'),angle:$('angle'),pat:$('cells'),cellPath:$('cellPath'),dimP:$('dimP'),dimL:$('dimL')};
+function setR(el,x,y,w,h){el.setAttribute('x',x);el.setAttribute('y',y);el.setAttribute('width',w);el.setAttribute('height',h)}
+function ln(el,x1,y1,x2,y2){el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2)}
+function niceStep(sc){const steps=[.1,.5,1,2,5,10,20,50,100,200,500,1000];for(const s of steps)if(s*sc>=18)return s;return 1000}
+let t0=performance.now();
+function frame(now){
+  const t=(now-t0)/1000,k=.14;
+  disp.w+=(tgt.w-disp.w)*k;disp.h+=(tgt.h-disp.h)*k;
+  disp.L+=(tgt.L-disp.L)*.12;disp.K+=(tgt.K-disp.K)*.12;disp.D+=(tgt.D-disp.D)*.12;
+  // berhenti tepat di target agar teks tidak bergeser sub-piksel
+  if(Math.abs(tgt.w-disp.w)<.05)disp.w=tgt.w;if(Math.abs(tgt.h-disp.h)<.05)disp.h=tgt.h;
+  if(Math.abs(tgt.L-disp.L)<.005)disp.L=tgt.L;if(Math.abs(tgt.K-disp.K)<.005)disp.K=tgt.K;if(Math.abs(tgt.D-disp.D)<.005)disp.D=tgt.D;
+  const w=disp.w,h=disp.h,x=-w/2,y=-h/2;
+  const bob=0;
+  [E.rect,E.glow,E.clip,E.cells,E.dash].forEach(el=>setR(el,x,y+bob,w,h));
+  E.glow.setAttribute('opacity',.35+(st.fx?Math.sin(t*2)*.2:0));
+  E.rect.setAttribute('rx',Math.min(10,w/8));E.dash.setAttribute('rx',Math.min(10,w/8));
+  E.dash.setAttribute('stroke-dashoffset',-t*30);
+  // kotak satuan
+  const step=niceStep(tgt.sc||10),cs=step*(tgt.sc||10);
+  E.pat.setAttribute('width',cs);E.pat.setAttribute('height',cs);E.pat.setAttribute('x',x);E.pat.setAttribute('y',y+bob);
+  E.cellPath.setAttribute('d','M'+cs+' 0H0V'+cs);
+  E.cells.style.opacity=st.showCells?1:0;E.cells.style.transition='opacity .4s';
+  // kilatan menyapu
+  const sx=x-60+((t*.45)%1)*(w+120);setR(E.sweep,sx,y+bob,40,h);E.sweep.style.opacity=st.fx?1:0;
+  // diagonal
+  const d=E.diag;ln(d,x,y+bob,x+w,y+h+bob);d.style.opacity=st.showDiag?1:0;d.style.transition='opacity .4s';
+  d.setAttribute('stroke-dashoffset',-t*25);
+  const u=(Math.sin(t*1.3)+1)/2,dx=x+w*u,dy=y+bob+h*u;
+  E.dot.setAttribute('cx',dx);E.dot.setAttribute('cy',dy);
+  const hr=6+((t*1.5)%1)*14;E.halo.setAttribute('cx',dx);E.halo.setAttribute('cy',dy);E.halo.setAttribute('r',hr);E.halo.setAttribute('opacity',1-((t*1.5)%1));
+  E.dot.style.opacity=E.halo.style.opacity=st.showDiag?1:0;
+  // dimensi
+  const topY=y+bob-22,rX=x+w+22;
+  ln(E.dpL,x,topY,x+w,topY);ln(E.dpA,x,topY-6,x,topY+6);ln(E.dpB,x+w,topY-6,x+w,topY+6);
+  ln(E.dlL,rX,y+bob,rX,y+h+bob);ln(E.dlA,rX-6,y+bob,rX+6,y+bob);ln(E.dlB,rX-6,y+h+bob,rX+6,y+h+bob);
+  E.dimP.style.opacity=E.dimL.style.opacity=E.tP.style.opacity=E.tL.style.opacity=st.showDim?1:0;
+  E.tP.setAttribute('x',0);E.tP.setAttribute('y',topY-9);E.tP.textContent='p = '+fmt(st.p)+' '+st.unit;
+  E.tL.setAttribute('x',rX+12);E.tL.setAttribute('y',bob+5);E.tL.textContent='l = '+fmt(st.l)+' '+st.unit;
+  E.tD.setAttribute('x',0);E.tD.setAttribute('y',bob-8);E.tD.setAttribute('transform','rotate('+(Math.atan2(h,w)*180/Math.PI)+' 0 '+(bob-8)+')');
+  E.tD.textContent='d = '+fmt(st.D2||Math.hypot(st.p,st.l))+' '+st.unit;E.tD.style.opacity=st.showDiag?1:0;
+  // siku-siku
+  const a=Math.min(16,w/5,h/5);E.angle.setAttribute('d','M'+(x+a)+' '+(y+h+bob)+'V'+(y+h-a+bob)+'H'+x);
+  E.angle.setAttribute('d','M'+x+' '+(y+h-a+bob)+'H'+(x+a)+'V'+(y+h+bob));
+  // angka
+  $('rL').textContent=fmt(+disp.L.toFixed(2));$('rK').textContent=fmt(+disp.K.toFixed(2));$('rD').textContent=(+disp.D).toFixed(2);
+  drawBg();drawCf();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- efek ketik pada tagline ---------- */
+const lines=['Kalkulator Persegi Panjang Yang dibuat dengan💖', 'BY: Razzan Tsaqif Aqilla', 'Dibuat untuk memudahkan Kalkulasi', 'Semoga Bermanfaat untuk kepentingan umum'];
+let li=0,ci=0,del=false;
+function type(){
+  const s=lines[li];ci+=del?-1:1;$('tagline').textContent=s.slice(0,ci)||'\u00A0';
+  let wait=del?25:55;
+  if(!del&&ci===s.length){del=true;wait=2200}
+  else if(del&&ci===0){del=false;li=(li+1)%lines.length;wait=400}
+  setTimeout(type,wait);
+}
+
+/* ---------- start ---------- */
+loadH();renderH();read();
+disp.w=0;disp.h=0;                    // animasi muncul dari nol
+setTimeout(()=>{$('s1').setAttribute('stop-color',css('--a'));$('s2').setAttribute('stop-color',css('--b'))},50);
+type();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
